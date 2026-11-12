@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>나무가 자라는 할일 플래너</title>
+<style>
+  :root {
+    --cream: #fff8e7;
+    --cream-deep: #fdeecb;
+    --green: #7cb342;
+    --green-deep: #558b2f;
+    --green-soft: #e3f1cf;
+    --leaf: #9ccc65;
+    --ink: #3b4a2a;
+    --ink-soft: #7a8566;
+    --line: #e8dfc4;
+    --card: #fffdf5;
+    --accent: #f06292;
+    --radius: 18px;
+    --shadow: 0 6px 18px rgba(110, 130, 60, 0.14);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    font-family: "Pretendard", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    color: var(--ink);
+    background: linear-gradient(180deg, #f6fbe9 0%, var(--cream) 55%, var(--cream-deep) 100%);
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+
+  .app {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 24px 20px 40px;
+  }
+
+  header.top {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  header.top h1 {
+    margin: 0;
+    font-size: 1.7rem;
+    color: var(--green-deep);
+    letter-spacing: -0.02em;
+  }
+  header.top p {
+    margin: 4px 0 0;
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+  }
+
+  .notice {
+    display: none;
+    margin: 0 auto 16px;
+    max-width: 720px;
+    background: #fff3d6;
+    border: 1px solid #f0d9a0;
+    color: #7a5a14;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    text-align: center;
+  }
+  .notice.show { display: block; }
+
+  .dashboard {
+    display: grid;
+    grid-template-columns: minmax(300px, 360px) minmax(0, 1fr) minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+  }
+  .dashboard > * { min-width: 0; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px;
+  }
+
+  .card h2 {
+    margin: 0 0 12px;
+    font-size: 1.1rem;
+    color: var(--green-deep);
+  }
+
+  /* ---------- 달력 ---------- */
+  .cal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .cal-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--ink);
+    text-align: center;
+    flex: 1;
+  }
+  .icon-btn {
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--green-deep);
+    border-radius: 10px;
+    width: 38px;
+    height: 38px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .icon-btn:hover { background: var(--green-soft); }
+
+  .today-btn {
+    display: block;
+    margin: 0 auto 10px;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--green-deep);
+    border-radius: 999px;
+    padding: 4px 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .today-btn:hover { background: var(--green-soft); }
+
+  .weekdays, .days {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .weekdays div {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    padding: 4px 0;
+  }
+  .weekdays div:first-child { color: #d9776b; }
+  .weekdays div:last-child { color: #6b8fd9; }
+
+  .day {
+    position: relative;
+    border: 1px solid transparent;
+    background: #fff;
+    border-radius: 12px;
+    min-height: 48px;
+    padding: 4px 0 2px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    color: var(--ink);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 2px;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .day:hover { background: var(--green-soft); }
+  .day:active { transform: scale(0.96); }
+  .day.empty {
+    background: transparent;
+    cursor: default;
+    pointer-events: none;
+  }
+  .day.today {
+    border-color: var(--green);
+    font-weight: 700;
+    box-shadow: inset 0 0 0 1px var(--green);
+  }
+  .day.today .num::after {
+    content: "오늘";
+    display: block;
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: var(--green-deep);
+    line-height: 1;
+    margin-top: 1px;
+  }
+  .day.selected {
+    background: var(--green);
+    color: #fff;
+  }
+  .day.selected.today .num::after { color: #fff; }
+  .day .mark {
+    height: 14px;
+    line-height: 14px;
+    font-size: 0.8rem;
+  }
+  .day .dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    vertical-align: middle;
+  }
+  .day.selected .dot { background: #fff; }
+  .day .check {
+    color: var(--green-deep);
+    font-weight: 800;
+  }
+  .day.selected .check { color: #fff; }
+
+  /* ---------- 목록 ---------- */
+  .date-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 0 0 12px;
+    font-size: 1.15rem;
+    color: var(--ink);
+  }
+  .today-tag {
+    font-size: 0.75rem;
+    background: var(--green);
+    color: #fff;
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-weight: 600;
+  }
+
+  .progress-box {
+    background: var(--green-soft);
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+  }
+  .progress-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .progress-count {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--green-deep);
+  }
+  .progress-count small {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    margin-left: 4px;
+  }
+  .progress-pct {
+    font-weight: 700;
+    color: var(--green-deep);
+  }
+  .track {
+    height: 12px;
+    background: #fff;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .fill {
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, #aed581, var(--green));
+    border-radius: 999px;
+    transition: width 0.5s ease;
+  }
+
+  .add-form {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .add-form input {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 1rem;
+    font-family: inherit;
+    color: var(--ink);
+  }
+  .add-form input:focus {
+    outline: 2px solid var(--leaf);
+    border-color: var(--leaf);
+  }
+  .add-form button {
+    border: none;
+    background: var(--green);
+    color: #fff;
+    border-radius: 12px;
+    padding: 0 16px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .add-form button:hover { background: var(--green-deep); }
+
+  ul.todos {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .todo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 8px 8px 8px 12px;
+  }
+  .todo label {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+  .todo input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .todo .box {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--leaf);
+    border-radius: 7px;
+    background: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: transparent;
+    font-size: 0.85rem;
+    font-weight: 800;
+    transition: background 0.15s, color 0.15s;
+  }
+  .todo input:checked + .box {
+    background: var(--green);
+    border-color: var(--green);
+    color: #fff;
+  }
+  .todo input:focus-visible + .box {
+    outline: 3px solid #c5e1a5;
+    outline-offset: 2px;
+  }
+  .todo .txt {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .todo input:checked ~ .txt {
+    color: var(--ink-soft);
+    text-decoration: line-through;
+  }
+  .todo .del {
+    flex: none;
+    border: none;
+    background: transparent;
+    color: #b9a98a;
+    font-size: 1rem;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .todo .del:hover {
+    background: #fde4e0;
+    color: #d9534f;
+  }
+  .list-tools {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+  }
+  .clear-done {
+    border: 1px solid #efc9c3;
+    background: #fff;
+    color: #c4574d;
+    border-radius: 10px;
+    padding: 7px 14px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .clear-done:hover:not(:disabled) { background: #fde4e0; }
+  .clear-done:disabled {
+    color: #c9bfae;
+    border-color: var(--line);
+    cursor: not-allowed;
+  }
+  .empty-list {
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+    padding: 18px 0 6px;
+  }
+
+  /* ---------- 나무 ---------- */
+  .tree-card {
+    position: relative;
+    overflow: hidden;
+  }
+  .tree-stage-badge {
+    display: inline-block;
+    background: var(--green-soft);
+    color: var(--green-deep);
+    font-size: 0.8rem;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 2px 12px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .tree-wrap {
+    border-radius: 14px;
+    background: linear-gradient(180deg, #e8f6ff 0%, #f7fbe8 70%, #eaf5d3 100%);
+    overflow: hidden;
+  }
+  .tree-wrap svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .stage {
+    opacity: 0;
+    transform: scale(0.6);
+    transform-origin: 150px 262px;
+    transition: opacity 0.6s ease, transform 0.8s cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+  .stage.active {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .tree-msg {
+    text-align: center;
+    margin: 12px 0 0;
+    font-weight: 600;
+    color: var(--green-deep);
+    min-height: 3em;
+  }
+
+  .confetti {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .petal {
+    position: absolute;
+    top: -20px;
+    border-radius: 50% 0 50% 0;
+    opacity: 0;
+    animation-name: petal-fall;
+    animation-timing-function: ease-in;
+    animation-fill-mode: forwards;
+  }
+  .sparkle {
+    position: absolute;
+    top: -20px;
+    opacity: 0;
+    animation-name: petal-fall;
+    animation-timing-function: ease-in;
+    animation-fill-mode: forwards;
+  }
+  @keyframes petal-fall {
+    0%   { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+    10%  { opacity: 1; }
+    100% { opacity: 0; transform: translate(var(--dx), 340px) rotate(var(--rot)); }
+  }
+
+  /* ---------- 반응형 ---------- */
+  @media (max-width: 1020px) {
+    .dashboard {
+      grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+    }
+    .cal-card { grid-row: span 2; }
+  }
+  @media (max-width: 700px) {
+    .app { padding: 16px 12px 32px; }
+    .dashboard { grid-template-columns: minmax(0, 1fr); }
+    .cal-card { grid-row: auto; }
+    header.top h1 { font-size: 1.4rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stage, .fill { transition-duration: 0.01s; }
+    .petal, .sparkle { animation-duration: 0.01s !important; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1>🌱 나무가 자라는 할일 플래너</h1>
+    <p>할일을 끝낼 때마다 나무가 쑥쑥 자라요</p>
+  </header>
+
+  <div id="notice" class="notice">
+    이 브라우저에서는 저장 기능을 쓸 수 없어요. 지금 입력한 할일은 새로고침하면 사라질 수 있어요.
+  </div>
+
+  <main class="dashboard">
+
+    <!-- 달력 -->
+    <section class="card cal-card" aria-label="달력">
+      <div class="cal-head">
+        <button type="button" class="icon-btn" id="prevMonth" aria-label="이전 달">◀</button>
+        <div class="cal-title" id="calTitle"></div>
+        <button type="button" class="icon-btn" id="nextMonth" aria-label="다음 달">▶</button>
+      </div>
+      <button type="button" class="today-btn" id="goToday">오늘로 이동</button>
+      <div class="weekdays" aria-hidden="true">
+        <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+      </div>
+      <div class="days" id="days"></div>
+    </section>
+
+    <!-- 선택한 날의 할일 -->
+    <section class="card" aria-label="할일 목록">
+      <h2 class="date-heading" id="dateHeading"></h2>
+
+      <div class="progress-box">
+        <div class="progress-row">
+          <div class="progress-count"><span id="progressCount">0/0</span><small>완료</small></div>
+          <div class="progress-pct" id="progressPct">0%</div>
+        </div>
+        <div class="track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressTrack">
+          <div class="fill" id="progressFill"></div>
+        </div>
+      </div>
+
+      <form class="add-form" id="addForm" autocomplete="off">
+        <input type="text" id="newTodo" maxlength="100" placeholder="할일을 입력하고 엔터를 눌러요" aria-label="새 할일">
+        <button type="submit">추가</button>
+      </form>
+
+      <ul class="todos" id="todoList"></ul>
+      <div class="empty-list" id="emptyList">이 날은 아직 할일이 없어요.</div>
+      <div class="list-tools">
+        <button type="button" class="clear-done" id="clearDone">완료 할일 모두 삭제</button>
+      </div>
+    </section>
+
+    <!-- 나무 -->
+    <section class="card tree-card" aria-label="나무">
+      <h2>나의 나무 <span class="tree-stage-badge" id="stageBadge">씨앗</span></h2>
+      <div class="tree-wrap">
+        <svg viewBox="0 0 300 300" role="img" aria-label="할일 완료 비율에 따라 자라는 나무" id="treeSvg">
+          <defs>
+            <radialGradient id="sunGlow">
+              <stop offset="0%" stop-color="#fff3b0" stop-opacity="0.9"/>
+              <stop offset="100%" stop-color="#fff3b0" stop-opacity="0"/>
+            </radialGradient>
+
+            <!-- 큰 나무 (3단계와 4단계에서 같이 사용) -->
+            <g id="bigTree">
+              <path d="M138 264 C143 232 144 192 140 150 L160 150 C156 192 157 232 162 264 Z" fill="#8d5f3c"/>
+              <path d="M150 205 Q130 190 116 168" stroke="#8d5f3c" stroke-width="7" fill="none" stroke-linecap="round"/>
+              <path d="M150 195 Q172 180 186 160" stroke="#8d5f3c" stroke-width="7" fill="none" stroke-linecap="round"/>
+              <circle cx="104" cy="138" r="38" fill="#7cb342"/>
+              <circle cx="196" cy="138" r="38" fill="#7cb342"/>
+              <circle cx="150" cy="100" r="52" fill="#66bb6a"/>
+              <circle cx="150" cy="148" r="42" fill="#8bc34a"/>
+              <circle cx="122" cy="88" r="22" fill="#81c784" opacity="0.8"/>
+              <circle cx="178" cy="112" r="18" fill="#a5d66b" opacity="0.8"/>
+            </g>
+          </defs>
+
+          <!-- 배경 -->
+          <circle cx="245" cy="48" r="46" fill="url(#sunGlow)"/>
+          <circle cx="245" cy="48" r="20" fill="#ffe082"/>
+          <ellipse cx="150" cy="268" rx="125" ry="16" fill="#c5e1a5"/>
+          <ellipse cx="150" cy="270" rx="95" ry="10" fill="#aed581"/>
+          <path d="M52 266 l4 -12 l4 12 M62 267 l3 -9 l3 9 M236 267 l4 -12 l4 12 M246 266 l3 -9 l3 9" stroke="#7cb342" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+          <!-- 0단계: 씨앗 -->
+          <g class="stage" id="stage0">
+            <ellipse cx="150" cy="264" rx="28" ry="9" fill="#8d6e63"/>
+            <ellipse cx="150" cy="258" rx="9" ry="6" fill="#a1887f"/>
+            <ellipse cx="147" cy="256" rx="3" ry="1.8" fill="#d7ccc8"/>
+          </g>
+
+          <!-- 1단계: 새싹 -->
+          <g class="stage" id="stage1">
+            <ellipse cx="150" cy="264" rx="22" ry="7" fill="#8d6e63"/>
+            <path d="M150 264 Q150 240 150 218" stroke="#7cb342" stroke-width="4" fill="none" stroke-linecap="round"/>
+            <path d="M150 238 C128 240 118 224 120 212 C138 210 150 222 150 238 Z" fill="#9ccc65"/>
+            <path d="M150 230 C172 232 182 216 180 204 C162 202 150 214 150 230 Z" fill="#aed581"/>
+          </g>
+
+          <!-- 2단계: 어린 나무 -->
+          <g class="stage" id="stage2">
+            <path d="M144 264 C146 236 146 206 145 176 L155 176 C154 206 154 236 156 264 Z" fill="#8d5f3c"/>
+            <circle cx="126" cy="168" r="24" fill="#8bc34a"/>
+            <circle cx="174" cy="168" r="24" fill="#8bc34a"/>
+            <circle cx="150" cy="146" r="38" fill="#7cb342"/>
+            <circle cx="150" cy="172" r="28" fill="#9ccc65"/>
+            <circle cx="138" cy="134" r="12" fill="#a5d66b" opacity="0.8"/>
+          </g>
+
+          <!-- 3단계: 큰 나무 -->
+          <g class="stage" id="stage3">
+            <use href="#bigTree"/>
+          </g>
+
+          <!-- 4단계: 꽃과 열매가 달린 나무 -->
+          <g class="stage" id="stage4">
+            <use href="#bigTree"/>
+            <g>
+              <circle cx="120" cy="86" r="6" fill="#f8bbd0"/><circle cx="120" cy="86" r="2.4" fill="#ffeb3b"/>
+              <circle cx="168" cy="70" r="6" fill="#f8bbd0"/><circle cx="168" cy="70" r="2.4" fill="#ffeb3b"/>
+              <circle cx="196" cy="118" r="6" fill="#f48fb1"/><circle cx="196" cy="118" r="2.4" fill="#ffeb3b"/>
+              <circle cx="92" cy="128" r="6" fill="#f48fb1"/><circle cx="92" cy="128" r="2.4" fill="#ffeb3b"/>
+              <circle cx="150" cy="112" r="6" fill="#f8bbd0"/><circle cx="150" cy="112" r="2.4" fill="#ffeb3b"/>
+              <circle cx="212" cy="150" r="6" fill="#f8bbd0"/><circle cx="212" cy="150" r="2.4" fill="#ffeb3b"/>
+              <circle cx="128" cy="150" r="7" fill="#ef5350"/><circle cx="126" cy="148" r="2" fill="#ffcdd2"/>
+              <circle cx="176" cy="156" r="7" fill="#ef5350"/><circle cx="174" cy="154" r="2" fill="#ffcdd2"/>
+              <circle cx="104" cy="160" r="6" fill="#f8bbd0"/><circle cx="104" cy="160" r="2.4" fill="#ffeb3b"/>
+              <circle cx="150" cy="168" r="7" fill="#ef5350"/><circle cx="148" cy="166" r="2" fill="#ffcdd2"/>
+            </g>
+          </g>
+        </svg>
+      </div>
+      <p class="tree-msg" id="treeMsg"></p>
+      <div class="confetti" id="confetti" aria-hidden="true"></div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ===== 기본 설정 ===== */
+  var STORE_KEY = 'tree-planner-v1';
+  var WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+  var STAGE_NAMES = ['씨앗', '새싹', '어린 나무', '큰 나무', '꽃 핀 나무'];
+
+  /* ===== 날짜 도구 (모두 내 컴퓨터의 현재 시간대 기준) ===== */
+  function pad(n) { return n < 10 ? '0' + n : String(n); }
+  function keyOf(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function parseKey(k) {
+    var p = k.split('-');
+    return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  }
+
+  /* ===== 저장 / 불러오기 ===== */
+  var storageOk = true;
+
+  function isValidTodo(t) {
+    return t && typeof t.id === 'string' && typeof t.text === 'string' &&
+           typeof t.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t.date) &&
+           typeof t.done === 'boolean';
+  }
+
+  function load() {
+    var raw = null;
+    try {
+      raw = window.localStorage.getItem(STORE_KEY);
+    } catch (e) {
+      storageOk = false;
+      return [];
+    }
+    if (!raw) return [];
+    try {
+      var arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.filter(isValidTodo) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function save() {
+    try {
+      window.localStorage.setItem(STORE_KEY, JSON.stringify(todos));
+    } catch (e) {
+      storageOk = false;
+      showNotice();
+    }
+  }
+
+  function showNotice() {
+    if (!storageOk) document.getElementById('notice').classList.add('show');
+  }
+
+  /* ===== 상태 ===== */
+  var todos = load();
+  var today = keyOf(new Date());
+  var selected = today;
+  var viewYear = new Date().getFullYear();
+  var viewMonth = new Date().getMonth();
+
+  /* ===== 화면 요소 ===== */
+  var el = {
+    calTitle: document.getElementById('calTitle'),
+    days: document.getElementById('days'),
+    prev: document.getElementById('prevMonth'),
+    next: document.getElementById('nextMonth'),
+    goToday: document.getElementById('goToday'),
+    dateHeading: document.getElementById('dateHeading'),
+    progressCount: document.getElementById('progressCount'),
+    progressPct: document.getElementById('progressPct'),
+    progressFill: document.getElementById('progressFill'),
+    progressTrack: document.getElementById('progressTrack'),
+    form: document.getElementById('addForm'),
+    input: document.getElementById('newTodo'),
+    list: document.getElementById('todoList'),
+    emptyList: document.getElementById('emptyList'),
+    clearDone: document.getElementById('clearDone'),
+    stageBadge: document.getElementById('stageBadge'),
+    treeMsg: document.getElementById('treeMsg'),
+    confetti: document.getElementById('confetti')
+  };
+
+  /* ===== 계산 ===== */
+  function statsFor(dateKey) {
+    var total = 0, done = 0;
+    for (var i = 0; i < todos.length; i++) {
+      if (todos[i].date === dateKey) {
+        total++;
+        if (todos[i].done) done++;
+      }
+    }
+    return { total: total, done: done };
+  }
+
+  // 퍼센트: 완료 ÷ 전체를 반올림한 값. 하나라도 끝냈으면 최소 1%,
+  // 다 끝내지 못했다면 최대 99%로 맞춰서 단계 기준(0 / 1~33 / 34~66 / 67~99 / 100)과 어긋나지 않게 합니다.
+  function percentOf(s) {
+    if (s.total === 0 || s.done === 0) return 0;
+    if (s.done === s.total) return 100;
+    var p = Math.round((s.done / s.total) * 100);
+    return Math.min(99, Math.max(1, p));
+  }
+
+  function stageOf(pct) {
+    if (pct === 0) return 0;
+    if (pct <= 33) return 1;
+    if (pct <= 66) return 2;
+    if (pct <= 99) return 3;
+    return 4;
+  }
+
+  /* ===== 달력 그리기 ===== */
+  function renderCalendar() {
+    el.calTitle.textContent = viewYear + '년 ' + (viewMonth + 1) + '월';
+
+    var statMap = {};
+    for (var i = 0; i < todos.length; i++) {
+      var t = todos[i];
+      var s = statMap[t.date] || (statMap[t.date] = { total: 0, done: 0 });
+      s.total++;
+      if (t.done) s.done++;
+    }
+
+    var firstDow = new Date(viewYear, viewMonth, 1).getDay();
+    var lastDate = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+    var frag = document.createDocumentFragment();
+
+    for (var b = 0; b < firstDow; b++) {
+      var blank = document.createElement('div');
+      blank.className = 'day empty';
+      frag.appendChild(blank);
+    }
+
+    for (var d = 1; d <= lastDate; d++) {
+      var key = viewYear + '-' + pad(viewMonth + 1) + '-' + pad(d);
+      var st = statMap[key];
+
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'day';
+      btn.dataset.date = key;
+      if (key === today) btn.classList.add('today');
+      if (key === selected) btn.classList.add('selected');
+      if (key === today) btn.setAttribute('aria-current', 'date');
+
+      var label = (viewMonth + 1) + '월 ' + d + '일';
+      if (st) {
+        label += ', 할일 ' + st.total + '개' + (st.done === st.total ? ', 모두 완료' : '');
+      }
+      btn.setAttribute('aria-label', label);
+
+      var num = document.createElement('span');
+      num.className = 'num';
+      num.textContent = String(d);
+      btn.appendChild(num);
+
+      var mark = document.createElement('span');
+      mark.className = 'mark';
+      if (st && st.total > 0) {
+        if (st.done === st.total) {
+          var c = document.createElement('span');
+          c.className = 'check';
+          c.textContent = '✓';
+          mark.appendChild(c);
+        } else {
+          var dot = document.createElement('span');
+          dot.className = 'dot';
+          mark.appendChild(dot);
+        }
+      }
+      btn.appendChild(mark);
+
+      frag.appendChild(btn);
+    }
+
+    el.days.innerHTML = '';
+    el.days.appendChild(frag);
+  }
+
+  /* ===== 목록 그리기 ===== */
+  function renderList() {
+    var d = parseKey(selected);
+    el.dateHeading.textContent = '';
+    var title = document.createElement('span');
+    title.textContent = d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일 (' + WEEKDAYS[d.getDay()] + ')';
+    el.dateHeading.appendChild(title);
+    if (selected === today) {
+      var tag = document.createElement('span');
+      tag.className = 'today-tag';
+      tag.textContent = '오늘';
+      el.dateHeading.appendChild(tag);
+    }
+
+    el.list.innerHTML = '';
+    var count = 0;
+    var doneCount = 0;
+    todos.forEach(function (t) {
+      if (t.date !== selected) return;
+      count++;
+      if (t.done) doneCount++;
+
+      var li = document.createElement('li');
+      li.className = 'todo';
+
+      var label = document.createElement('label');
+
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = t.done;
+      cb.dataset.id = t.id;
+
+      var box = document.createElement('span');
+      box.className = 'box';
+      box.textContent = '✓';
+      box.setAttribute('aria-hidden', 'true');
+
+      var txt = document.createElement('span');
+      txt.className = 'txt';
+      txt.textContent = t.text;
+
+      label.appendChild(cb);
+      label.appendChild(box);
+      label.appendChild(txt);
+
+      var del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'del';
+      del.dataset.id = t.id;
+      del.textContent = '✕';
+      del.setAttribute('aria-label', '"' + t.text + '" 삭제');
+
+      li.appendChild(label);
+      li.appendChild(del);
+      el.list.appendChild(li);
+    });
+
+    el.emptyList.style.display = count === 0 ? 'block' : 'none';
+    el.clearDone.disabled = doneCount === 0;
+  }
+
+  /* ===== 진행률 + 나무 ===== */
+  function renderProgressAndTree() {
+    var s = statsFor(selected);
+    var pct = percentOf(s);
+    var stage = stageOf(pct);
+
+    el.progressCount.textContent = s.done + '/' + s.total;
+    el.progressPct.textContent = pct + '%';
+    el.progressFill.style.width = pct + '%';
+    el.progressTrack.setAttribute('aria-valuenow', String(pct));
+
+    for (var i = 0; i < 5; i++) {
+      var g = document.getElementById('stage' + i);
+      if (i === stage) g.classList.add('active');
+      else g.classList.remove('active');
+    }
+
+    el.stageBadge.textContent = STAGE_NAMES[stage];
+
+    var msg;
+    if (s.total === 0) msg = '할일을 추가해 보세요';
+    else if (stage === 0) msg = '씨앗이 기다리고 있어요. 첫 할일을 끝내 볼까요?';
+    else if (stage === 1) msg = '새싹이 돋았어요! 잘하고 있어요 🌱';
+    else if (stage === 2) msg = '어린 나무로 자라고 있어요. 조금만 더!';
+    else if (stage === 3) msg = '큰 나무가 되었어요. 거의 다 왔어요!';
+    else msg = '할일을 모두 끝냈어요! 나무에 꽃이 활짝 피었어요 🌸';
+    el.treeMsg.textContent = msg;
+  }
+
+  function renderAll() {
+    renderCalendar();
+    renderList();
+    renderProgressAndTree();
+  }
+
+  /* ===== 축하 효과 ===== */
+  function celebrate() {
+    var colors = ['#f8bbd0', '#f48fb1', '#ffe082', '#c5e1a5', '#ffffff', '#ffccbc'];
+    var frag = document.createDocumentFragment();
+    var i, node;
+
+    for (i = 0; i < 34; i++) {
+      node = document.createElement('span');
+      node.className = 'petal';
+      var size = 8 + Math.random() * 10;
+      node.style.width = size + 'px';
+      node.style.height = size + 'px';
+      node.style.left = (Math.random() * 100) + '%';
+      node.style.background = colors[Math.floor(Math.random() * colors.length)];
+      node.style.animationDuration = (2 + Math.random() * 1.6) + 's';
+      node.style.animationDelay = (Math.random() * 0.6) + 's';
+      node.style.setProperty('--dx', (Math.random() * 120 - 60) + 'px');
+      node.style.setProperty('--rot', (Math.random() * 540 - 270) + 'deg');
+      frag.appendChild(node);
+    }
+    for (i = 0; i < 10; i++) {
+      node = document.createElement('span');
+      node.className = 'sparkle';
+      node.textContent = '✨';
+      node.style.left = (Math.random() * 100) + '%';
+      node.style.fontSize = (12 + Math.random() * 10) + 'px';
+      node.style.animationDuration = (2 + Math.random() * 1.4) + 's';
+      node.style.animationDelay = (Math.random() * 0.8) + 's';
+      node.style.setProperty('--dx', (Math.random() * 80 - 40) + 'px');
+      node.style.setProperty('--rot', (Math.random() * 120 - 60) + 'deg');
+      frag.appendChild(node);
+    }
+
+    el.confetti.appendChild(frag);
+    setTimeout(function () { el.confetti.innerHTML = ''; }, 4500);
+  }
+
+  /* ===== 이벤트 ===== */
+
+  // 달력: 이전 달 / 다음 달 / 오늘로
+  el.prev.addEventListener('click', function () {
+    viewMonth--;
+    if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+    renderCalendar();
+  });
+  el.next.addEventListener('click', function () {
+    viewMonth++;
+    if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+    renderCalendar();
+  });
+  el.goToday.addEventListener('click', function () {
+    today = keyOf(new Date());
+    selected = today;
+    var t = parseKey(today);
+    viewYear = t.getFullYear();
+    viewMonth = t.getMonth();
+    renderAll();
+  });
+
+  // 달력: 날짜 선택
+  el.days.addEventListener('click', function (e) {
+    var btn = e.target.closest('button.day');
+    if (!btn || !btn.dataset.date) return;
+    selected = btn.dataset.date;
+    renderAll();
+    var again = el.days.querySelector('button[data-date="' + selected + '"]');
+    if (again) again.focus();
+  });
+
+  // 할일 추가 (엔터 또는 추가 버튼)
+  el.form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var text = el.input.value.trim();
+    if (!text) { el.input.focus(); return; }
+
+    todos.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      text: text,
+      date: selected,
+      done: false
+    });
+    save();
+    el.input.value = '';
+    renderAll();
+    el.input.focus();
+  });
+
+  // 체크 / 해제
+  el.list.addEventListener('change', function (e) {
+    var cb = e.target;
+    if (!cb || cb.type !== 'checkbox') return;
+    var id = cb.dataset.id;
+    var item = null;
+    for (var i = 0; i < todos.length; i++) {
+      if (todos[i].id === id) { item = todos[i]; break; }
+    }
+    if (!item) return;
+
+    item.done = cb.checked;
+    save();
+    renderAll();
+
+    var again = el.list.querySelector('input[data-id="' + id + '"]');
+    if (again) again.focus();
+
+    if (item.done) {
+      var s = statsFor(selected);
+      if (s.total > 0 && s.done === s.total) celebrate();
+    }
+  });
+
+  // 삭제
+  el.list.addEventListener('click', function (e) {
+    var btn = e.target.closest('button.del');
+    if (!btn) return;
+    if (!window.confirm('정말 지울까요?')) return;
+    var id = btn.dataset.id;
+    todos = todos.filter(function (t) { return t.id !== id; });
+    save();
+    renderAll();
+  });
+
+  // 선택한 날의 완료된 할일만 모두 삭제 (미완료 할일은 그대로 남음)
+  el.clearDone.addEventListener('click', function () {
+    todos = todos.filter(function (t) {
+      return !(t.date === selected && t.done);
+    });
+    save();
+    renderAll();
+  });
+
+  // 탭을 다시 열었을 때 날짜가 바뀌었으면 '오늘' 표시만 갱신
+  window.addEventListener('focus', function () {
+    var now = keyOf(new Date());
+    if (now !== today) {
+      today = now;
+      renderAll();
+    }
+  });
+
+  /* ===== 시작 ===== */
+  showNotice();
+  renderAll();
+})();
+</script>
+</body>
+</html>
